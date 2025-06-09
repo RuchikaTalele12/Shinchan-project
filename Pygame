@@ -1,0 +1,126 @@
+import pygame
+import random
+import os
+
+# Initialize
+pygame.init()
+WIDTH, HEIGHT = 800, 600
+screen = pygame.display.set_mode((WIDTH, HEIGHT))
+pygame.display.set_caption("Shinchan Balloon Popper")
+clock = pygame.time.Clock()
+font = pygame.font.SysFont("comicsans", 30)
+
+# Load Images
+shinchan = pygame.image.load("shinchan.png")
+shinchan = pygame.transform.scale(shinchan, (100, 100))
+
+balloon = pygame.image.load("balloon.png")
+balloon = pygame.transform.scale(balloon, (40, 60))
+
+dart = pygame.image.load("dart.png")
+dart = pygame.transform.scale(dart, (10, 40))
+
+# Game variables
+shinchan_x = WIDTH // 2
+dart_list = []
+balloon_list = []
+score = 0
+missed = 0
+high_score_file = "high_score.txt"
+
+if os.path.exists(high_score_file):
+    with open(high_score_file, "r") as file:
+        high_score = int(file.read())
+else:
+    high_score = 0
+
+# Functions
+def draw():
+    screen.fill((255, 255, 255))
+    screen.blit(shinchan, (shinchan_x, HEIGHT - 100))
+
+    for dart_pos in dart_list:
+        screen.blit(dart, dart_pos)
+
+    for balloon_pos in balloon_list:
+        screen.blit(balloon, balloon_pos)
+
+    score_text = font.render(f"Score: {score}", True, (0, 0, 0))
+    high_text = font.render(f"High Score: {high_score}", True, (0, 0, 0))
+    miss_text = font.render(f"Missed: {missed}/5", True, (255, 0, 0))
+
+    screen.blit(score_text, (10, 10))
+    screen.blit(high_text, (10, 50))
+    screen.blit(miss_text, (10, 90))
+    pygame.display.update()
+
+# Game loop
+running = True
+dart_timer = 0
+balloon_timer = 0
+
+while running:
+    clock.tick(60)
+    dart_timer += 1
+    balloon_timer += 1
+
+    # Automatic dart throw
+    if dart_timer > 30:
+        dart_list.append([shinchan_x + 45, HEIGHT - 110])
+        dart_timer = 0
+
+    # Automatic balloon spawn
+    if balloon_timer > 50:
+        balloon_x = random.randint(50, WIDTH - 50)
+        balloon_list.append([balloon_x, HEIGHT])
+        balloon_timer = 0
+
+    # Move darts
+    for dart_pos in dart_list:
+        dart_pos[1] -= 10
+    dart_list = [d for d in dart_list if d[1] > -40]
+
+    # Move balloons
+    for balloon_pos in balloon_list:
+        balloon_pos[1] -= 5
+    for b in balloon_list:
+        if b[1] < -60:
+            missed += 1
+            balloon_list.remove(b)
+
+    # Collision detection
+    for dart_pos in dart_list:
+        for balloon_pos in balloon_list:
+            dart_rect = pygame.Rect(dart_pos[0], dart_pos[1], 10, 40)
+            balloon_rect = pygame.Rect(balloon_pos[0], balloon_pos[1], 40, 60)
+            if dart_rect.colliderect(balloon_rect):
+                score += 1
+                if balloon_pos in balloon_list:
+                    balloon_list.remove(balloon_pos)
+                if dart_pos in dart_list:
+                    dart_list.remove(dart_pos)
+                break
+
+    draw()
+
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            running = False
+
+    if missed >= 5:
+        running = False
+
+# Update high score
+if score > high_score:
+    with open(high_score_file, "w") as file:
+        file.write(str(score))
+
+# End screen
+screen.fill((255, 255, 255))
+end_msg = font.render(f"Game Over! Your Score: {score}", True, (0, 0, 0))
+high_msg = font.render(f"High Score: {max(score, high_score)}", True, (0, 0, 255))
+screen.blit(end_msg, (WIDTH//2 - 150, HEIGHT//2 - 30))
+screen.blit(high_msg, (WIDTH//2 - 150, HEIGHT//2 + 10))
+pygame.display.update()
+pygame.time.wait(3000)
+pygame.quit()
